@@ -7,6 +7,16 @@ class Role(db.Model):
     name = db.Column(db.String(64), unique=True)
     users = db.relationship('User', backref='role', lazy='dynamic')
 
+    @staticmethod
+    def insert_roles():
+        roles = ['User', 'Administrator']
+        for r in roles:
+            role = Role.query.filter_by(name=r).first()
+            if role is None:
+                role = Role(name=r)
+                db.session.add(role)
+        db.session.commit()
+
     def __repr__(self):
         return '<Role %r>' % self.name
 
