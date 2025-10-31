@@ -1,40 +1,30 @@
-from threading import Thread
-from flask import current_app, render_template
-from flask_mail import Message
-from . import mail
+from flask import current_app
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail
 
-import requests
-from datetime import datetime
+def send_email_sendgrid(to_list, subject, html_content_body):
+    """Envia e-mail com SendGrid."""
+    
+    # Carrega as configs do app atual
+    config = current_app.config
+    full_subject = f"{config['FLASKY_MAIL_SUBJECT_PREFIX']} {subject}"
 
-def send_async_email(app, msg):
-    with app.app_context():
-        mail.send(msg)
+    # Prepara o formato do destinatário (string ou tuple)
+    if len(to_list) == 1:
+        destinos = to_list[0]
+    else:
+        destinos = tuple(to_list)
 
-
-def send_email(to, subject, template, **kwargs):
-    app = current_app._get_current_object()
-    msg = Message(app.config['FLASKY_MAIL_SUBJECT_PREFIX'] + ' ' + subject,
-                  sender=app.config['FLASKY_MAIL_SENDER'], recipients=[to])    
-    msg.html = render_template(template + '.html', **kwargs)
-    thr = Thread(target=send_async_email, args=[app, msg])
-    thr.start()
-    return thr
-
-def send_simple_message(to, subject, newUser):
-    app = current_app._get_current_object()
-    print('Enviando mensagem (POST)...', flush=True)
-    print('URL: ' + str(app.config['API_URL']), flush=True)
-    print('api: ' + str(app.config['API_KEY']), flush=True)
-    print('from: ' + str(app.config['API_FROM']), flush=True)
-    print('to: ' + str(to), flush=True)
-    print('subject: ' + str(app.config['FLASKY_MAIL_SUBJECT_PREFIX']) + ' ' + subject, flush=True)
-    print('text: ' + "Novo usuário cadastrado: " + newUser, flush=True)
-
-    resposta = requests.post(app.config['API_URL'], 
-                             auth=("api", app.config['API_KEY']), data={"from": app.config['API_FROM'], 
-                                                                        "to": to, 
-                                                                        "subject": app.config['FLASKY_MAIL_SUBJECT_PREFIX'] + ' ' + subject, 
-                                                                        "text": "Novo usuário cadastrado: " + newUser})
-        
-    print('Enviando mensagem (Resposta)...' + str(resposta) + ' - ' + datetime.now().strftime("%m/%d/%Y, %H:%M:%S"), flush=True)
-    return resposta
+    message = Mail(
+        from_email=config['API_FROM'],
+        to_emails=destinos,
+        subject=full_subject,
+        html_content=html_content_body
+    )
+    try:
+        sg = SendGridAPIClient(config['SENDGRID_API_KEY'])
+        response = sg.send(message)
+        print(f"E-mail enviado para {to_list}, status: {response.status_code}")
+    except Exception as e:
+        # Pega o contexto do app para imprimir o erro no log
+        print(f"Erro ao enviar e-mail: {e}")
