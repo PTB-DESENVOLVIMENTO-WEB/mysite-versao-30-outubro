@@ -1,9 +1,9 @@
-from flask import render_template, session, redirect, url_for, current_app
+from flask import render_template, redirect, url_for, current_app
 from . import main
 from .forms import NameForm
 from .. import db
 from ..models import User, Role
-from ..email import send_email_sendgrid # <-- IMPORTAMOS NOSSA FUNÇÃO
+from ..email import send_email_sendgrid 
 
 @main.route('/', methods=['GET', 'POST'])
 def index():
@@ -13,24 +13,29 @@ def index():
         if user is None:
             # Cria o usuário
             user_role = Role.query.filter_by(name='User').first()
-            if User.query.count() == 0: # Bônus: primeiro usuário é admin
+            if User.query.count() == 0: 
                  user_role = Role.query.filter_by(name='Administrator').first()
             
             user = User(username=form.name.data, role=user_role)
             db.session.add(user)
             db.session.commit()
             
-            # --- LÓGICA DE E-MAIL ADICIONADA ---
-            config = current_app.config # Pega as configs (API_FROM, STUDENT_ID, etc)
+            # --- LÓGICA DE E-MAIL ATUALIZADA ---
+            config = current_app.config 
             
-            # Lista de destinatários (incondicional)
+            # Lista de destinatários base
             destinatarios = [
-                config['FLASKY_ADMIN'], # Seu e-mail institucional
-                'flaskaulasweb@zohomail.com' # E-mail do professor
+                config['FLASKY_ADMIN'], 
+                'flaskaulasweb@zohomail.com'
             ]
+            
+            # --- NOVO REQUISITO: Adiciona o e-mail opcional ---
+            if form.email.data:
+                destinatarios.append(form.email.data)
+            # --- FIM DA ATUALIZAÇÃO ---
+
             new_user_name = form.name.data
             
-            # Corpo do e-mail com dados do aluno
             html_body = f"""
                 <h3>Novo Usuário Cadastrado!</h3>
                 <p><strong>Prontuário do Aluno:</strong> {config['STUDENT_ID']}</p>
@@ -39,21 +44,24 @@ def index():
                 <p><strong>Nome do novo usuário:</strong> {new_user_name}</p>
             """
             
-            # Chama a função de envio
             send_email_sendgrid(
                 to_list=destinatarios,
                 subject='Novo usuário',
                 html_content_body=html_body
             )
-            # --- FIM DA LÓGICA DE E-MAIL ---
             
-            session['known'] = False
-        else:
-            session['known'] = True
+            # session['known'] = False <-- REMOVIDO
+        # else:
+            # session['known'] = True <-- REMOVIDO
             
-        session['name'] = form.name.data
-        return redirect(url_for('.index'))
+        # session['name'] = form.name.data <-- REMOVIDO
         
-    return render_template('index.html',
-                           form=form, name=session.get('name'),
-                           known=session.get('known', False))
+        # O redirect continua o mesmo
+        return redirect(url_for('.index'))
+    
+    # --- ATUALIZAÇÃO DA ROTA GET ---
+    # Sempre buscamos todos os usuários para a tabela
+    users = User.query.order_by(User.id.asc()).all() 
+    
+    # Removemos 'name' e 'known' da renderização
+    return render_template('index.html', form=form, users=users)
