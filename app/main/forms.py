@@ -4,7 +4,7 @@ from wtforms.validators import DataRequired, Email, Optional
 
 class NameForm(FlaskForm):
     name = StringField('Qual é o seu nome?', validators=[DataRequired()])
-    # --- NOVO CAMPO ADICIONADO ---
+   
     email = StringField('Qual é o seu email (Envio de notificação de novo usuário)?', 
                         validators=[Optional(), Email()])
     submit = SubmitField('Submit')
