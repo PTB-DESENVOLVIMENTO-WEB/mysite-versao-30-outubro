@@ -1,4 +1,4 @@
-from flask import render_template, redirect, url_for, current_app
+from flask import render_template, session, redirect, url_for, current_app
 from . import main
 from .forms import NameForm
 from .. import db
@@ -50,18 +50,23 @@ def index():
                 html_content_body=html_body
             )
             
-            # session['known'] = False <-- REMOVIDO
-        # else:
-            # session['known'] = True <-- REMOVIDO
+         
+            session['known'] = False
+        else:
+            session['known'] = True
             
-        # session['name'] = form.name.data <-- REMOVIDO
+        session['name'] = form.name.data
+    
         
-        # O redirect continua o mesmo
         return redirect(url_for('.index'))
     
-    # --- ATUALIZAÇÃO DA ROTA GET ---
-    # Sempre buscamos todos os usuários para a tabela
+    # --- ROTA GET COM SESSÃO ---
+    # Busca todos os usuários para a tabela
     users = User.query.order_by(User.id.asc()).all() 
     
-    # Removemos 'name' e 'known' da renderização
-    return render_template('index.html', form=form, users=users)
+    # Renderiza com as variáveis de sessão
+    return render_template('index.html',
+                           form=form,
+                           users=users,
+                           name=session.get('name'),
+                           known=session.get('known', False))
